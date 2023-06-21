@@ -1,7 +1,7 @@
 {
-  "name": "struggler-cli",
+  "name": "@struggler/cli",
   "version": "1.0.0",
-  "description": "",
+  "description": "CLI to Upload vite packaged files to Qiniu Cloud OSS.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,6 +9,10 @@
   "bin": {
     "struggler-cli": "./index.js"
   },
+  "keywords": [
+    "Qiniu",
+    "OSS"
+  ],
   "author": "moqi(str@li.cm)",
   "license": "ISC",
   "dependencies": {
@@ -17,5 +21,9 @@
     "commander": "^11.0.0",
     "figlet": "^1.6.0",
     "qiniu": "^7.8.0"
-  }
+  },
+  "publicConfig": {
+    "registry": "http://registry.npmjs.org/"
+  } 
+
 }
