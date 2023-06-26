@@ -1,6 +1,6 @@
 {
   "name": "@struggler/cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI to Upload vite packaged files to Qiniu Cloud OSS.",
   "main": "index.js",
   "scripts": {
@@ -24,6 +24,5 @@
   },
   "publicConfig": {
     "registry": "http://registry.npmjs.org/"
-  } 
-
+  }
 }

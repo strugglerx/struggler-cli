@@ -89,11 +89,10 @@ function main(options) {
 
         const str = path.relative(dir, localFile)
 
-        key = prefix + str;
+        key = prefix + str
 
         //上传之后的文件名
-
-        key = key.replace("\\", "/");
+        key = key.replace(/\\/g, "/")
 
         formUploader.putFile(uploadToken, key, localFile, null, function (respErr,
 
