@@ -17,7 +17,7 @@ console.log(magentaBright(figlet.textSync('struggler-cli', { horizontalLayout: '
 program
 .name('struggler-cli')
 .description('CLI to Upload vite packaged files to Qiniu Cloud OSS.')
-.version('1.0.2')
+.version('1.0.3')
 .option('-c, --config <path>', 'Specify the path to upload configuration file.', './command/qiniu.json')
 .option('-d, --dir <path>', 'Specify the dir to upload.', './dist')
 
@@ -31,6 +31,13 @@ program
 .command('upload')
 .description('Upload files under the specified file to Qiniu Cloud.')
     .action(() => { command.upload(program.opts()) })
+
+program
+    .command('refresh')
+    .description('refresh Qiniu Cloud files Cdn')
+    .action(() => { command.refresh(program.opts()) })
+
+
 
 program
     .command('addVersion')
