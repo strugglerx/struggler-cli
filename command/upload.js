@@ -46,27 +46,6 @@ function main(options) {
     let dir = getDir(options)
 
     function upload(key, localFile) {
-
-        //这里base-html是存储空间名
-
-        // var Bucket = `cfun:${key}`;
-
-        var Bucket = qiniuConfig.Bucket;
-
-        var options = {
-
-            scope: Bucket,
-
-            // detectMime:0
-
-            // MimeType: 'text/html;text/css;text/javascript;application/x-gzip',
-
-        };
-
-        var putPolicy = new qiniu.rs.PutPolicy(options);
-
-        var uploadToken = putPolicy.uploadToken(mac);
-
         //windows
 
         /* let str = null;
@@ -93,6 +72,29 @@ function main(options) {
 
         //上传之后的文件名
         key = key.replace(/\\/g, "/")
+
+        //这里base-html是存储空间名
+
+        // var Bucket = `cfun:${key}`;
+
+        var Bucket = qiniuConfig.Bucket;
+
+        var options = {
+
+            // scope: Bucket,
+
+            // https://developer.qiniu.com/kodo/1289/nodejs#overwrite-uptoken
+            scope: Bucket + ":" + key
+
+            // detectMime:0
+
+            // MimeType: 'text/html;text/css;text/javascript;application/x-gzip',
+
+        };
+
+        var putPolicy = new qiniu.rs.PutPolicy(options);
+
+        var uploadToken = putPolicy.uploadToken(mac);
 
         formUploader.putFile(uploadToken, key, localFile, null, function (respErr,
 
