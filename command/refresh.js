@@ -1,131 +1,111 @@
-var fs = require('fs');
-
-var path = require('path');
-
 var qiniu = require("qiniu");
 
 var qiniuPrefix = require("../lib/prefix")
 
 let { getQiniuConfig, getDir } = require('../lib/config')
-let { getJsonData, setJsonData } = require('../lib/files')
+let { getJsonData } = require('../lib/files')
+const { createIgnoreMatcher } = require('../lib/ignore');
+const {
+    collectDeployFiles,
+    createSummary,
+    ensureRequiredConfig,
+    finalizeOutput,
+    logPlan,
+    toRemoteKey,
+} = require('../lib/deploy');
+const { printMessage } = require('../lib/output');
 
-
-function main(options) {
+async function main(options, runtime = {}) {
     const qiniuConfig = getJsonData(getQiniuConfig(options))
+    const prefix = runtime.prefix || qiniuPrefix.prefix(options);
+    let dir = getDir(options)
+    const startedAt = Date.now();
+    const ignoreMatcher = createIgnoreMatcher(dir, options);
+    const excludedPatterns = runtime.excludePatterns || ignoreMatcher.patterns;
+    const files = runtime.files || await collectDeployFiles(dir, options);
+    const plans = files.map((localFile) => {
+        const key = toRemoteKey(prefix, dir, localFile);
+        return {
+            localFile,
+            key,
+            target: `${qiniuConfig.domain || ''}${key}`,
+        };
+    });
 
-    //自己七牛云的秘钥
+    if (options.dryRun) {
+        if (!runtime.suppressOutput) {
+            logPlan('refresh', plans, options);
+        }
+        const summary = createSummary('refresh', true, plans.map((plan) => ({
+            ok: true,
+            localFile: plan.localFile,
+            key: plan.key,
+            target: plan.target,
+        })), startedAt, {
+            prefix,
+            excludedPatterns,
+        });
+        return runtime.suppressOutput ? summary : finalizeOutput(summary, options, runtime.manifestExtra);
+    }
+
+    ensureRequiredConfig(
+        { ...qiniuConfig, 'publicPath(config.json)': prefix },
+        ['accessKey', 'secretKey', 'domain', 'publicPath(config.json)']
+    );
 
     var accessKey = qiniuConfig.accessKey
-
     var secretKey = qiniuConfig.secretKey;
-
     var mac = new qiniu.auth.digest.Mac(accessKey, secretKey);
-
     var cdnManager = new qiniu.cdn.CdnManager(mac);
 
-    //文件前缀
-    const prefix = qiniuPrefix.prefix(options);
-
-    let dir = getDir(options)
-
-    function refresh(key, localFile) {
-
-        const str = path.relative(dir, localFile)
-
-        key = prefix + str
-
-        //上传之后的文件名
-        key = key.replace(/\\/g, "/")
-
-        var url_file = qiniuConfig.domain + key
-
-        //URL 列表
-        var urlsToRefresh = [
-            url_file
-        ];
-        //单次请求链接不可以超过10个，如果超过，请分批发送请求
-        cdnManager.refreshUrls(urlsToRefresh, function (respErr, respBody, respInfo) {
-            if (respErr) {
-                console.log(url_file + "文件刷新失败");
-                throw respErr;
-
-            } else {
-                if (respInfo.statusCode == 200) {
-                    
-                    console.log(respBody.error,":", Object.keys(respBody.taskIds));
-
-                } else {
-                    console.log(respInfo.statusCode);
-                    if (respBody.error) {
-
-                        console.log(respBody.error)
-
-                    }
-
+    function refresh(plan) {
+        return new Promise((resolve, reject) => {
+            cdnManager.refreshUrls([plan.target], function (respErr, respBody, respInfo) {
+                if (respErr || respInfo.statusCode !== 200) {
+                    const errorMessage = respErr || (respBody && respBody.error) || `statusCode=${respInfo && respInfo.statusCode}`;
+                    reject(new Error(errorMessage));
+                    return;
                 }
 
-            }
+                resolve(respBody);
+            });
         });
-
     }
 
-    //遍历文件夹
-
-    function displayFile(param) {
-
-        //转换为绝对路径
-
-        //var param = path.resolve(param);
-
-        fs.stat(param, function (err, stats) {
-
-            //如果是目录的话，遍历目录下的文件信息
-
-            if (stats.isDirectory()) {
-
-                fs.readdir(param, function (err, file) {
-
-                    file.forEach((e) => {
-
-                        //遍历之后递归调用查看文件函数
-
-                        //遍历目录得到的文件名称是不含路径的，需要将前面的绝对路径拼接
-
-                        var absolutePath = path.join(param, e);
-
-                        //var absolutePath = path.resolve(path.join(param, e));
-
-                        displayFile(absolutePath)
-
-                    })
-
-                })
-
-            } else {
-
-                //file2/这里是空间里的文件前缀
-
-                var key = 'file2';
-
-                var localFile = param;
-
-                if (!localFile.endsWith(".gz")) {
-
-                    refresh(key, localFile);
-
-                }
-
+    const results = [];
+    for (const plan of plans) {
+        try {
+            await refresh(plan);
+            if (!runtime.suppressOutput) {
+                printMessage(options, `[refreshed] ${plan.target}`);
             }
-
-        })
-
+            results.push({
+                ok: true,
+                localFile: plan.localFile,
+                key: plan.key,
+                target: plan.target,
+            });
+        } catch (error) {
+            results.push({
+                ok: false,
+                localFile: plan.localFile,
+                key: plan.key,
+                target: plan.target,
+                error: error.message,
+            });
+        }
     }
 
-    displayFile(dir);
+    const summary = createSummary('refresh', false, results, startedAt, {
+        prefix,
+        excludedPatterns,
+    });
+    const finalSummary = runtime.suppressOutput ? summary : finalizeOutput(summary, options, runtime.manifestExtra);
+    if (finalSummary.failedCount > 0) {
+        throw new Error(`Refresh finished with ${summary.failedCount} failures`);
+    }
 
+    return finalSummary;
 }
-
-
-
 
 module.exports = main

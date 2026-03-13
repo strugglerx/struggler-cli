@@ -1,5 +1,5 @@
 struggler-cli upload -d ./dist3
 
-struggler-cli addVersion  
+pnpm add-version
 
 struggler-cli init  

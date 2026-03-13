@@ -1,0 +1,6 @@
+# macOS / editor noise
+.DS_Store
+Thumbs.db
+
+# source maps are often unnecessary on CDN refreshes
+*.map

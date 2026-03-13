@@ -14,16 +14,22 @@ function getPackageJson() {
 function main(){
     let packageData = getPackageJson();//获取package的json
     let arr = packageData.version.split('.');//切割后的版本号数组
+    if (arr.length !== 3 || arr.some((item) => Number.isNaN(parseInt(item, 10)))) {
+        throw new Error(`Invalid semver version: ${packageData.version}`)
+    }
     arr[2] = parseInt(arr[2]) + 1;
     packageData.version = arr.join('.');//转换为以"."分割的字符串
-    //用packageData覆盖package.json内容
-    fs.writeFile(
+    fs.writeFileSync(
         packagePath,
         JSON.stringify(packageData, null, "\t"
-        ),
-        (err) => { }
+        )
     )
+    console.log(`Version updated to ${packageData.version}`)
 }
 
 
 module.exports = main
+
+if (require.main === module) {
+    main()
+}

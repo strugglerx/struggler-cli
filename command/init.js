@@ -2,22 +2,17 @@ let { getConfig, getQiniuConfig } = require('../lib/config')
 const chalk = require('chalk');
 let { getJsonData, setJsonData, setSyncJsonData, directoryExists } = require('../lib/files')
 let path = require('path')
+const { formatDate } = require('../lib/date');
+const { printMessage } = require('../lib/output');
 
-function formatDate(date) {
-    date = date || new Date()
-    const year = date.getFullYear()
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    const hours = date.getHours()
-    const minutes = date.getMinutes()
-
-    return `${year}${month < 10 ? `0${month}` : month}${day < 10 ? `0${day}` : day}${hours < 10 ? `0${hours}` : hours}${minutes < 10 ? `0${minutes}` : minutes}`
-}
-
-function init(qiniuConfigPath, configPath){
+function init(qiniuConfigPath, options){
     if (!directoryExists(qiniuConfigPath)){
-        console.log(chalk.red("七牛配置不存在 正在生成模版 请稍后在下面的文件里填写必要的信息!"))
-        console.log(chalk.blue(qiniuConfigPath))
+        printMessage(options, chalk.red("七牛配置不存在 正在生成模版 请稍后在下面的文件里填写必要的信息!"))
+        printMessage(options, chalk.blue(qiniuConfigPath))
+        if (options.dryRun) {
+            printMessage(options, `[dry-run] init would create template ${qiniuConfigPath}`)
+            return
+        }
         setSyncJsonData(qiniuConfigPath, getJsonData(path.resolve(__dirname, '../def/qiniu.json')))
     }
 
@@ -26,16 +21,21 @@ function init(qiniuConfigPath, configPath){
 function main(options){
     let configPath = getConfig(options)
     let qiniuConfigPath = getQiniuConfig(options)
-    init(qiniuConfigPath, configPath)
+    init(qiniuConfigPath, options)
     const qiniuConfig = getJsonData(qiniuConfigPath)
     let domain = qiniuConfig.domain
-    
+    const versionPrefix = formatDate()
     let config = getJsonData(configPath)
-    config.publicPath = qiniuConfig.path + '/' + formatDate() + '/'
-    config.base = domain + qiniuConfig.path + '/' + formatDate() + '/'
-    //用packageData覆盖package.json内容
-    console.log(config)
+    config.publicPath = `${qiniuConfig.path || ''}/${versionPrefix}/`
+    config.base = `${domain || ''}${qiniuConfig.path || ''}/${versionPrefix}/`
+    if (options.dryRun) {
+        printMessage(options, `[dry-run] init would write ${configPath}`)
+        printMessage(options, JSON.stringify(config, null, 2))
+        return config
+    }
+    printMessage(options, JSON.stringify(config, null, 2))
     setJsonData(configPath, config)
+    return config
 }
 
 module.exports = main

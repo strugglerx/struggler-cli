@@ -1,9 +1,9 @@
 var init = require('./init');
 var upload = require('./upload');
 var refresh = require('./refresh');
-var addVersion = require('./addVersion');
+var deploy = require('./deploy');
 
 exports.init = init;
 exports.upload = upload;
 exports.refresh = refresh;
-exports.addVersion = addVersion;
+exports.deploy = deploy;
