@@ -21,3 +21,5 @@ build/
 
 .idea/
 .vscode/
+
+command/upload-cache.json

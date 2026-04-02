@@ -2,7 +2,7 @@ var qiniu = require("qiniu");
 
 var qiniuPrefix = require("../lib/prefix")
 
-let { getQiniuConfig, getDir } = require('../lib/config')
+let { getQiniuConfig, getDir, getCachePath } = require('../lib/config')
 let { getJsonData } = require('../lib/files')
 const { createIgnoreMatcher } = require('../lib/ignore');
 const {
@@ -16,6 +16,8 @@ const {
     toRemoteKey,
 } = require('../lib/deploy');
 const { printMessage } = require('../lib/output');
+const { computeFileMd5, readCache, writeCache, isCacheHit, updateCacheEntry } = require('../lib/cache');
+const { createProgressBar } = require('../lib/progress');
 
 async function main(options, runtime = {}) {
     const qiniuConfig = getJsonData(getQiniuConfig(options))
@@ -25,20 +27,39 @@ async function main(options, runtime = {}) {
     const ignoreMatcher = createIgnoreMatcher(dir, options);
     const excludedPatterns = runtime.excludePatterns || ignoreMatcher.patterns;
     const files = runtime.files || await collectDeployFiles(dir, options);
-    const plans = files.map((localFile) => {
+
+    const useCache = !options.noCache;
+    const cachePath = getCachePath(options);
+    const cache = useCache ? readCache(cachePath) : {};
+
+    const plans = [];
+    const skippedPlans = [];
+
+    for (const localFile of files) {
         const key = toRemoteKey(prefix, dir, localFile);
-        return {
+        const plan = {
             localFile,
             key,
             target: `${qiniuConfig.domain || ''}${key}`,
         };
-    });
+
+        if (useCache && !options.dryRun) {
+            const md5 = computeFileMd5(localFile);
+            plan.localMd5 = md5;
+            if (isCacheHit(cache, key, md5)) {
+                skippedPlans.push(plan);
+                continue;
+            }
+        }
+
+        plans.push(plan);
+    }
 
     if (options.dryRun) {
         if (!runtime.suppressOutput) {
-            logPlan('upload', plans, options);
+            logPlan('upload', [...plans, ...skippedPlans], options);
         }
-        const summary = createSummary('upload', true, plans.map((plan) => ({
+        const summary = createSummary('upload', true, [...plans, ...skippedPlans].map((plan) => ({
             ok: true,
             localFile: plan.localFile,
             key: plan.key,
@@ -47,6 +68,7 @@ async function main(options, runtime = {}) {
             prefix,
             concurrency: normalizeConcurrency(options.concurrency),
             excludedPatterns,
+            skippedCount: 0,
         });
         return runtime.suppressOutput ? summary : finalizeOutput(summary, options, runtime.manifestExtra);
     }
@@ -102,11 +124,22 @@ async function main(options, runtime = {}) {
         });
     }
 
+    const totalFiles = plans.length + skippedPlans.length;
+    const bar = createProgressBar(totalFiles, {
+        json: options.json,
+        suppressOutput: runtime.suppressOutput,
+    });
+
+    for (const plan of skippedPlans) {
+        bar.tick({ filename: plan.localFile, skipped: true });
+    }
+
     const results = await runWithConcurrency(plans, normalizeConcurrency(options.concurrency), async (plan) => {
         try {
             const response = await upload(plan);
-            if (!runtime.suppressOutput) {
-                printMessage(options, `[uploaded] ${plan.localFile} -> ${plan.target}`);
+            bar.tick({ filename: plan.localFile });
+            if (useCache && plan.localMd5) {
+                updateCacheEntry(cache, plan.key, plan.localMd5, response.hash);
             }
             return {
                 ok: true,
@@ -116,6 +149,7 @@ async function main(options, runtime = {}) {
                 hash: response.hash,
             };
         } catch (error) {
+            bar.tick({ filename: plan.localFile, failed: true });
             return {
                 ok: false,
                 localFile: plan.localFile,
@@ -126,10 +160,27 @@ async function main(options, runtime = {}) {
         }
     });
 
-    const summary = createSummary('upload', false, results, startedAt, {
+    bar.finish();
+
+    if (useCache) {
+        writeCache(cachePath, cache);
+    }
+
+    const skippedResults = skippedPlans.map((plan) => ({
+        ok: true,
+        skipped: true,
+        localFile: plan.localFile,
+        key: plan.key,
+        target: plan.target,
+    }));
+
+    const allResults = [...results, ...skippedResults];
+
+    const summary = createSummary('upload', false, allResults, startedAt, {
         prefix,
         concurrency: normalizeConcurrency(options.concurrency),
         excludedPatterns,
+        skippedCount: skippedPlans.length,
     });
     const finalSummary = runtime.suppressOutput ? summary : finalizeOutput(summary, options, runtime.manifestExtra);
     if (finalSummary.failedCount > 0) {

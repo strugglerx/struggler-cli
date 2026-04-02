@@ -60,7 +60,7 @@ program.configureHelp({
 	},
 })
 
-program.name("struggler-cli").description(locale.appDescription).version(packageJson.version, "-v, --version", locale.options.version).helpOption("-h, --help", locale.options.help).option("-c, --config <path>", locale.options.config, "./command/qiniu.json").option("-d, --dir <path>", locale.options.dir, "./dist").option("--dry-run", locale.options.dryRun).option("--concurrency <number>", locale.options.concurrency, "5").option("--exclude <pattern>", locale.options.exclude).option("--ignore-file <path>", locale.options.ignoreFile, ".strugglerignore").option("--manifest <path>", locale.options.manifest).option("--json", locale.options.json).option("--skip-init", locale.options.skipInit).option("--skip-refresh", locale.options.skipRefresh).option("--lang <lang>", locale.options.lang, lang)
+program.name("struggler-cli").description(locale.appDescription).version(packageJson.version, "-v, --version", locale.options.version).helpOption("-h, --help", locale.options.help).option("-c, --config <path>", locale.options.config, "./command/qiniu.json").option("-d, --dir <path>", locale.options.dir, "./dist").option("--dry-run", locale.options.dryRun).option("--concurrency <number>", locale.options.concurrency, "5").option("--exclude <pattern>", locale.options.exclude).option("--ignore-file <path>", locale.options.ignoreFile, ".strugglerignore").option("--manifest <path>", locale.options.manifest).option("--json", locale.options.json).option("--skip-init", locale.options.skipInit).option("--skip-refresh", locale.options.skipRefresh).option("--no-cache", locale.options.noCache).option("--lang <lang>", locale.options.lang, lang)
 
 program
 	.command("init")
