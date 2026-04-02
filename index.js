@@ -19,7 +19,7 @@ if (!shouldUseJson({ json: isJsonMode })) {
 
 // 输出Logo
 if (!isJsonMode) {
-	console.log(magentaBright(figlet.textSync("struggler-cli", { horizontalLayout: "full" })), "\n\n")
+	console.log(magentaBright(figlet.textSync("struggler-cli", { font: "Small" })), "\n")
 }
 
 function formatItems(items, getLeft, getRight) {
