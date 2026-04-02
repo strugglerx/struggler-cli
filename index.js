@@ -97,6 +97,13 @@ program.parseAsync().catch(error => {
 		printJson({ ok: false, error: error.message || String(error) })
 		return
 	}
-	printError({}, error.message || error)
+	const { redBright, dim } = require('chalk')
+	const { messages } = getLocale(lang)
+	const msg = error.message || String(error)
+	console.error('')
+	console.error(redBright(`  ✗  ${messages.errorTitle}`))
+	console.error('')
+	msg.split('\n').forEach(line => console.error(`  ${dim(line)}`))
+	console.error('')
 	process.exitCode = 1
 })

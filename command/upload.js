@@ -18,6 +18,7 @@ const {
 const { printMessage } = require('../lib/output');
 const { computeFileMd5, readCache, writeCache, isCacheHit, updateCacheEntry } = require('../lib/cache');
 const { createProgressBar } = require('../lib/progress');
+const { getLocale } = require('../lib/i18n');
 
 async function main(options, runtime = {}) {
     const qiniuConfig = getJsonData(getQiniuConfig(options))
@@ -75,7 +76,8 @@ async function main(options, runtime = {}) {
 
     ensureRequiredConfig(
         { ...qiniuConfig, 'publicPath(config.json)': prefix },
-        ['accessKey', 'secretKey', 'Bucket', 'zone', 'domain', 'publicPath(config.json)']
+        ['accessKey', 'secretKey', 'Bucket', 'zone', 'domain', 'publicPath(config.json)'],
+        options
     );
 
     var accessKey = qiniuConfig.accessKey
@@ -100,7 +102,8 @@ async function main(options, runtime = {}) {
             formUploader.putFile(uploadToken, plan.key, plan.localFile, putExtra, async function (respErr, respBody, respInfo) {
                 if (respErr || respInfo.statusCode !== 200) {
                     if (attempt < 3) {
-                        console.log(`${plan.localFile} 上传失败，正在进行第 ${attempt + 1} 次重试`);
+                        const { messages } = getLocale(options && options.lang);
+                        printMessage(options, messages.uploadRetrying(plan.localFile, attempt + 1));
                         try {
                             const retryResult = await upload(plan, attempt + 1);
                             resolve(retryResult);
@@ -184,7 +187,8 @@ async function main(options, runtime = {}) {
     });
     const finalSummary = runtime.suppressOutput ? summary : finalizeOutput(summary, options, runtime.manifestExtra);
     if (finalSummary.failedCount > 0) {
-        throw new Error(`Upload finished with ${summary.failedCount} failures`);
+        const { messages } = getLocale(options && options.lang);
+        throw new Error(messages.uploadFailed(summary.failedCount));
     }
 
     return finalSummary;

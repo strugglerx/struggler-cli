@@ -4,21 +4,23 @@ let { getJsonData, setJsonData, setSyncJsonData, directoryExists } = require('..
 let path = require('path')
 const { formatDate } = require('../lib/date');
 const { printMessage } = require('../lib/output');
+const { getLocale } = require('../lib/i18n');
 
 function init(qiniuConfigPath, options){
+    const { messages } = getLocale(options && options.lang);
     if (!directoryExists(qiniuConfigPath)){
-        printMessage(options, chalk.red("七牛配置不存在 正在生成模版 请稍后在下面的文件里填写必要的信息!"))
-        printMessage(options, chalk.blue(qiniuConfigPath))
+        printMessage(options, chalk.yellow(`  ⚠  ${messages.initTemplateCreated}`));
+        printMessage(options, `     ${chalk.dim(qiniuConfigPath)}`);
         if (options.dryRun) {
-            printMessage(options, `[dry-run] init would create template ${qiniuConfigPath}`)
+            printMessage(options, chalk.dim(messages.initDryRunCreate(qiniuConfigPath)));
             return
         }
         setSyncJsonData(qiniuConfigPath, getJsonData(path.resolve(__dirname, '../def/qiniu.json')))
     }
-
 }
 
 function main(options){
+    const { messages } = getLocale(options && options.lang);
     let configPath = getConfig(options)
     let qiniuConfigPath = getQiniuConfig(options)
     init(qiniuConfigPath, options)
@@ -29,11 +31,12 @@ function main(options){
     config.publicPath = `${qiniuConfig.path || ''}/${versionPrefix}/`
     config.base = `${domain || ''}${qiniuConfig.path || ''}/${versionPrefix}/`
     if (options.dryRun) {
-        printMessage(options, `[dry-run] init would write ${configPath}`)
-        printMessage(options, JSON.stringify(config, null, 2))
+        printMessage(options, chalk.dim(messages.initDryRunWrite(configPath)));
+        printMessage(options, chalk.dim(JSON.stringify(config, null, 2)));
         return config
     }
-    printMessage(options, JSON.stringify(config, null, 2))
+    printMessage(options, `  ${chalk.green('✓')}  ${messages.initConfigUpdated}`);
+    printMessage(options, `     ${chalk.dim(configPath)}`);
     setJsonData(configPath, config)
     return config
 }

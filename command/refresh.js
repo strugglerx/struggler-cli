@@ -14,6 +14,8 @@ const {
     toRemoteKey,
 } = require('../lib/deploy');
 const { printMessage } = require('../lib/output');
+const { createProgressBar } = require('../lib/progress');
+const { getLocale } = require('../lib/i18n');
 
 async function main(options, runtime = {}) {
     const qiniuConfig = getJsonData(getQiniuConfig(options))
@@ -50,7 +52,8 @@ async function main(options, runtime = {}) {
 
     ensureRequiredConfig(
         { ...qiniuConfig, 'publicPath(config.json)': prefix },
-        ['accessKey', 'secretKey', 'domain', 'publicPath(config.json)']
+        ['accessKey', 'secretKey', 'domain', 'publicPath(config.json)'],
+        options
     );
 
     var accessKey = qiniuConfig.accessKey
@@ -72,13 +75,16 @@ async function main(options, runtime = {}) {
         });
     }
 
+    const bar = createProgressBar(plans.length, {
+        json: options.json,
+        suppressOutput: runtime.suppressOutput,
+    });
+
     const results = [];
     for (const plan of plans) {
         try {
             await refresh(plan);
-            if (!runtime.suppressOutput) {
-                printMessage(options, `[refreshed] ${plan.target}`);
-            }
+            bar.tick({ filename: plan.target });
             results.push({
                 ok: true,
                 localFile: plan.localFile,
@@ -86,6 +92,7 @@ async function main(options, runtime = {}) {
                 target: plan.target,
             });
         } catch (error) {
+            bar.tick({ filename: plan.target, failed: true });
             results.push({
                 ok: false,
                 localFile: plan.localFile,
@@ -96,13 +103,16 @@ async function main(options, runtime = {}) {
         }
     }
 
+    bar.finish();
+
     const summary = createSummary('refresh', false, results, startedAt, {
         prefix,
         excludedPatterns,
     });
     const finalSummary = runtime.suppressOutput ? summary : finalizeOutput(summary, options, runtime.manifestExtra);
     if (finalSummary.failedCount > 0) {
-        throw new Error(`Refresh finished with ${summary.failedCount} failures`);
+        const { messages } = getLocale(options && options.lang);
+        throw new Error(messages.refreshFailed(summary.failedCount));
     }
 
     return finalSummary;

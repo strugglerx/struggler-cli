@@ -1,10 +1,12 @@
 const init = require('./init');
 const upload = require('./upload');
 const refresh = require('./refresh');
+const chalk = require('chalk');
 const { collectDeployFiles, createSummary, finalizeOutput } = require('../lib/deploy');
 const { getDir } = require('../lib/config');
 const { createIgnoreMatcher } = require('../lib/ignore');
 const { printMessage } = require('../lib/output');
+const { getLocale } = require('../lib/i18n');
 
 async function main(options) {
     const startedAt = Date.now();
@@ -47,7 +49,8 @@ async function main(options) {
             suppressOutput: true,
         });
     } else {
-        printMessage(options, '[deploy] refresh step skipped');
+        const { messages } = getLocale(options && options.lang);
+        printMessage(options, `  ${chalk.dim(`↩  ${messages.deploySkipRefresh}`)}`);
     }
 
     const deploySummary = finalizeOutput(createSummary('deploy', Boolean(options.dryRun), [
@@ -68,7 +71,18 @@ async function main(options) {
         excludedPatterns: ignoreMatcher.patterns,
     }), options, manifestExtra);
 
-    printMessage(options, `[deploy] upload=${uploadSummary.succeededCount}/${uploadSummary.total} refresh=${refreshSummary.succeededCount}/${refreshSummary.total}`);
+    const { messages } = getLocale(options && options.lang);
+    const uploadOk = uploadSummary.failedCount === 0;
+    const refreshOk = options.skipRefresh || refreshSummary.failedCount === 0;
+    const allOk = uploadOk && refreshOk;
+    printMessage(options, '');
+    printMessage(options, `  ${allOk ? chalk.green('✓') : chalk.red('✗')}  ${chalk.bold(messages.deployDone)}`);
+    printMessage(options, '');
+    printMessage(options, `     ${chalk.dim(messages.deployUploadLabel)}  ${chalk.green(uploadSummary.succeededCount)} / ${uploadSummary.total} ${messages.deployFileUnit}`);
+    if (!options.skipRefresh) {
+        printMessage(options, `     ${chalk.dim(messages.deployRefreshLabel)}  ${chalk.green(refreshSummary.succeededCount)} / ${refreshSummary.total} ${messages.deployUnit}`);
+    }
+    printMessage(options, '');
     return deploySummary;
 }
 
