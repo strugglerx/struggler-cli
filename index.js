@@ -1,6 +1,4 @@
 #! /usr/bin/env node
-const { magentaBright } = require("chalk")
-const figlet = require("figlet")
 const clear = require("clear")
 const { program } = require("commander")
 const command = require("./command")
@@ -19,7 +17,7 @@ if (!shouldUseJson({ json: isJsonMode })) {
 
 // 输出Logo
 if (!isJsonMode) {
-	console.log(magentaBright(figlet.textSync("struggler-cli", { font: "Small" })), "\n")
+	console.log(require('./lib/logo') + '\n')
 }
 
 function formatItems(items, getLeft, getRight) {
