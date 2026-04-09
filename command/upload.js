@@ -19,6 +19,7 @@ const { printMessage } = require('../lib/output');
 const { computeFileMd5, readCache, writeCache, isCacheHit, updateCacheEntry } = require('../lib/cache');
 const { createProgressBar } = require('../lib/progress');
 const { getLocale } = require('../lib/i18n');
+const { resolveMimeType } = require('../lib/mime');
 
 async function main(options, runtime = {}) {
     const qiniuConfig = getJsonData(getQiniuConfig(options))
@@ -89,9 +90,10 @@ async function main(options, runtime = {}) {
     config.useCdnDomain = true;
 
     var formUploader = new qiniu.form_up.FormUploader(config);
-    var putExtra = new qiniu.form_up.PutExtra();
-
     function upload(plan, attempt = 1) {
+        var putExtra = new qiniu.form_up.PutExtra();
+        putExtra.mimeType = resolveMimeType(plan.localFile);
+
         var uploadOptions = {
             scope: `${qiniuConfig.Bucket}:${plan.key}`
         };

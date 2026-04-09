@@ -1,6 +1,6 @@
 {
 	"name": "@struggler/cli",
-	"version": "1.0.9",
+	"version": "1.0.10",
 	"description": "CLI to Upload vite packaged files to Qiniu Cloud OSS.",
 	"main": "index.js",
 	"scripts": {
@@ -16,11 +16,13 @@
 	],
 	"author": "moqi(str@li.cm)",
 	"license": "ISC",
+	"engines": {
+		"node": ">=16"
+	},
 	"dependencies": {
 		"chalk": "^v4.1.2",
 		"clear": "^0.1.0",
 		"commander": "^11.0.0",
-		"figlet": "^1.6.0",
 		"qiniu": "^7.8.0"
 	},
 	"publicConfig": {

@@ -3,8 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const qiniu = require('qiniu');
 const upload = require('../command/upload');
 const deploy = require('../command/deploy');
+const { resolveMimeType } = require('../lib/mime');
 
 function createWorkspace() {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'struggler-cli-upload-'));
@@ -110,4 +112,72 @@ test('deploy dry-run supports skip-refresh and json-friendly summary data', asyn
         process.chdir(previousCwd);
         fs.rmSync(workspace, { recursive: true, force: true });
     }
+});
+
+test('upload sets explicit mimeType for web assets', async () => {
+    const previousCwd = process.cwd();
+    const workspace = createWorkspace();
+    const captured = [];
+
+    const originalMac = qiniu.auth.digest.Mac;
+    const originalPutPolicy = qiniu.rs.PutPolicy;
+    const originalFormUploader = qiniu.form_up.FormUploader;
+
+    try {
+        process.chdir(workspace);
+
+        fs.writeFileSync(path.join(workspace, 'command/qiniu.json'), JSON.stringify({
+            accessKey: 'ak',
+            secretKey: 'sk',
+            Bucket: 'demo-bucket',
+            zone: 'Zone_z0',
+            path: 'demo-app',
+            domain: 'https://cdn.example.com/',
+        }, null, 2));
+
+        qiniu.auth.digest.Mac = function MockMac() {};
+        qiniu.rs.PutPolicy = function MockPutPolicy() {
+            this.uploadToken = () => 'mock-token';
+        };
+        qiniu.form_up.FormUploader = function MockFormUploader() {
+            this.putFile = (uploadToken, key, localFile, putExtra, callback) => {
+                captured.push({
+                    uploadToken,
+                    key,
+                    localFile,
+                    mimeType: putExtra.mimeType,
+                });
+                callback(null, { hash: `${path.basename(localFile)}-hash` }, { statusCode: 200 });
+            };
+        };
+
+        const summary = await upload({
+            config: './command/qiniu.json',
+            dir: './dist',
+            concurrency: '1',
+        }, {
+            suppressOutput: true,
+        });
+
+        assert.equal(summary.failedCount, 0);
+        assert.deepEqual(
+            captured.map((item) => [path.basename(item.localFile), item.mimeType]).sort(),
+            [
+                ['app.js', 'application/javascript'],
+                ['index.html', 'text/html'],
+            ]
+        );
+    } finally {
+        qiniu.auth.digest.Mac = originalMac;
+        qiniu.rs.PutPolicy = originalPutPolicy;
+        qiniu.form_up.FormUploader = originalFormUploader;
+        process.chdir(previousCwd);
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('resolveMimeType covers common assets and keeps safe fallback', () => {
+    assert.equal(resolveMimeType('/tmp/app.js'), 'application/javascript');
+    assert.equal(resolveMimeType('/tmp/logo.svg'), 'image/svg+xml');
+    assert.equal(resolveMimeType('/tmp/data.unknown-ext'), null);
 });
