@@ -19,6 +19,20 @@ const showLogo = !isJsonMode && !hasSubCmd && !isVersionMode
 if (showLogo) {
 	clear()
 	console.log(require('./lib/logo') + '\n')
+
+	// One-time hint: suggest completion install if not yet set up
+	const fs = require('fs')
+	const os = require('os')
+	const path = require('path')
+	const shell = (process.env.SHELL || '').split('/').pop()
+	const completionFiles = {
+		zsh: path.join(os.homedir(), '.zsh', 'completions', '_struggler-cli'),
+		bash: path.join(os.homedir(), '.bash_completion.d', 'struggler-cli'),
+	}
+	const completionFile = completionFiles[shell]
+	if (completionFile && !fs.existsSync(completionFile)) {
+		console.log('  Tip: enable tab completion with: struggler-cli completion install\n')
+	}
 }
 
 function formatItems(items, getLeft, getRight) {
