@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-// Only print the hint during global installs; skip in CI / local dev installs.
-const isGlobal = process.env.npm_config_global === 'true';
+// Skip in CI environments.
 const isCI = process.env.CI || process.env.CONTINUOUS_INTEGRATION;
 
-if (!isGlobal || isCI) process.exit(0);
+if (isCI) process.exit(0);
 
 const shell = (process.env.SHELL || '').split('/').pop();
 const supported = shell === 'zsh' || shell === 'bash';
