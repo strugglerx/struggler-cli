@@ -185,6 +185,39 @@ struggler-cli deploy -d ./dist --json --dry-run
 - Avoid spaces in profile names; use `prod`, `staging`, `dev`.
 - When scripting, quote paths: `--config-dir "./command"`.
 
+## Shell completion
+
+Enable tab completion for subcommands, flags, and profile names.
+
+### zsh (recommended)
+
+One-liner install:
+
+```bash
+make completion-install
+source ~/.zshrc
+```
+
+Or manually:
+
+```bash
+mkdir -p ~/.zsh/completions
+struggler-cli completion zsh > ~/.zsh/completions/_struggler-cli
+# add to ~/.zshrc if not already present:
+echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
+echo 'autoload -Uz compinit && compinit' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### bash
+
+```bash
+struggler-cli completion bash >> ~/.bash_profile
+source ~/.bash_profile
+```
+
+After installation, `struggler-cli <TAB>` completes subcommands, flags, and `profile use <TAB>` completes your profile names.
+
 ## Makefile shortcuts
 
 ```bash

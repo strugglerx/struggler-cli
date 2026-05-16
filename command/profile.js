@@ -9,7 +9,7 @@ const {
     getProfilePath,
     getProfilesDir,
 } = require('../lib/profile');
-const { printMessage } = require('../lib/output');
+const { printMessage, printJson, shouldUseJson } = require('../lib/output');
 const { getLocale } = require('../lib/i18n');
 
 const TEMPLATE_PATH = path.resolve(__dirname, '../def/qiniu.json');
@@ -34,7 +34,11 @@ function listAction(options) {
     if (current) {
         printMessage(options, chalk.dim(messages.profileListCurrentHint));
     }
-    return { profiles, current };
+    const result = { profiles, current };
+    if (shouldUseJson(options)) {
+        printJson(result);
+    }
+    return result;
 }
 
 function useAction(name, options) {

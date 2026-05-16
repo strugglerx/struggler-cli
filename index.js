@@ -9,14 +9,15 @@ const { resolveLang, getLocale } = require("./lib/i18n")
 const lang = resolveLang(process.argv)
 const locale = getLocale(lang)
 const isJsonMode = process.argv.includes("--json")
+const isVersionMode = process.argv.includes("-v") || process.argv.includes("--version")
 
-// 清除命令行
-if (!shouldUseJson({ json: isJsonMode })) {
+// 只有在没有执行具体子命令时（即展示根 help）才显示 logo
+const KNOWN_CMDS = new Set(['init', 'upload', 'refresh', 'deploy', 'profile', 'completion'])
+const hasSubCmd = process.argv.slice(2).some((a) => KNOWN_CMDS.has(a))
+const showLogo = !isJsonMode && !hasSubCmd && !isVersionMode
+
+if (showLogo) {
 	clear()
-}
-
-// 输出Logo
-if (!isJsonMode) {
 	console.log(require('./lib/logo') + '\n')
 }
 
@@ -125,7 +126,16 @@ profileCmd
 		command.profile.import(name, file, program.opts())
 	})
 
-program.addHelpCommand(true, locale.help.helpCommandDescription)
+program
+	.command("completion [shell]")
+	.description(locale.commands.completion)
+	.option("--list-profiles", "list profile names (used by shell completion)")
+	.addHelpText('after', '\nshell: zsh | bash | install (auto-detect and install)')
+	.action((shell, cmdOpts) => {
+		command.completion(shell, { ...program.opts(), ...cmdOpts })
+	})
+
+program.addHelpCommand(false)
 
 program.parseAsync().catch(error => {
 	if (isJsonMode) {

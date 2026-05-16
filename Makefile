@@ -13,7 +13,7 @@ JSON ?=
 SKIP_INIT ?=
 SKIP_REFRESH ?=
 
-.PHONY: help install reinstall link unlink init upload refresh deploy add-version example-upload test
+.PHONY: help install reinstall link unlink init upload refresh deploy add-version example-upload test completion-install
 
 help:
 	@echo "Available targets:"
@@ -28,6 +28,7 @@ help:
 	@echo "  make add-version                Run the package version bump script"
 	@echo "  make example-upload             Upload the sample test/dist3 directory"
 	@echo "  make test                       Run the automated test suite"
+	@echo "  make completion-install         Install zsh completion (adds to ~/.zshrc)"
 	@echo ""
 	@echo "Variables:"
 	@echo "  CONFIG=$(CONFIG)"
@@ -58,6 +59,8 @@ link:
 	@hash -r
 	@which struggler-cli || true
 	@struggler-cli -v || true
+	@echo ""
+	@$(NODE) $(CLI_ENTRY) completion install || true
 
 unlink:
 	@$(PNPM) unlink --global @struggler/cli || true
@@ -84,3 +87,19 @@ example-upload:
 
 test:
 	$(PNPM) test
+
+completion-install:
+	@FPATH_DIR="$${HOME}/.zsh/completions"; \
+	mkdir -p "$$FPATH_DIR"; \
+	$(NODE) $(CLI_ENTRY) completion zsh > "$$FPATH_DIR/_struggler-cli"; \
+	echo "  ✓  zsh completion installed: $$FPATH_DIR/_struggler-cli"; \
+	if ! grep -q "$$FPATH_DIR" "$${HOME}/.zshrc" 2>/dev/null; then \
+		echo "" >> "$${HOME}/.zshrc"; \
+		echo "# struggler-cli zsh completion" >> "$${HOME}/.zshrc"; \
+		echo "fpath=($$FPATH_DIR \$$fpath)" >> "$${HOME}/.zshrc"; \
+		echo "autoload -Uz compinit && compinit" >> "$${HOME}/.zshrc"; \
+		echo "  ✓  added fpath to ~/.zshrc"; \
+	else \
+		echo "  ·  fpath already in ~/.zshrc, skipped"; \
+	fi; \
+	echo "  →  run: source ~/.zshrc"
