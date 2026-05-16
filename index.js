@@ -58,7 +58,7 @@ program.configureHelp({
 	},
 })
 
-program.name("struggler-cli").description(locale.appDescription).version(packageJson.version, "-v, --version", locale.options.version).helpOption("-h, --help", locale.options.help).option("-c, --config <path>", locale.options.config, "./command/qiniu.json").option("--config-dir [path]", locale.options.configDir).option("-d, --dir <path>", locale.options.dir, "./dist").option("--dry-run", locale.options.dryRun).option("--concurrency <number>", locale.options.concurrency, "5").option("--exclude <pattern>", locale.options.exclude).option("--ignore-file <path>", locale.options.ignoreFile, ".strugglerignore").option("--manifest <path>", locale.options.manifest).option("--json", locale.options.json).option("--skip-init", locale.options.skipInit).option("--skip-refresh", locale.options.skipRefresh).option("--no-cache", locale.options.noCache).option("--lang <lang>", locale.options.lang, lang)
+program.name("struggler-cli").description(locale.appDescription).version(packageJson.version, "-v, --version", locale.options.version).helpOption("-h, --help", locale.options.help).option("-c, --config <path>", locale.options.config).option("--config-dir [path]", locale.options.configDir).option("-d, --dir <path>", locale.options.dir, "./dist").option("--dry-run", locale.options.dryRun).option("--concurrency <number>", locale.options.concurrency, "5").option("--exclude <pattern>", locale.options.exclude).option("--ignore-file <path>", locale.options.ignoreFile, ".strugglerignore").option("--manifest <path>", locale.options.manifest).option("--json", locale.options.json).option("--skip-init", locale.options.skipInit).option("--skip-refresh", locale.options.skipRefresh).option("--no-cache", locale.options.noCache).option("--lang <lang>", locale.options.lang, lang)
 
 program
 	.command("init")
@@ -86,6 +86,43 @@ program
 	.description(locale.commands.deploy)
 	.action(async () => {
 		await command.deploy(program.opts())
+	})
+
+const profileCmd = program.command("profile").description(locale.commands.profile)
+
+profileCmd
+	.command("list")
+	.description(locale.commands.profileList)
+	.action(() => {
+		command.profile.list(program.opts())
+	})
+
+profileCmd
+	.command("use <name>")
+	.description(locale.commands.profileUse)
+	.action((name) => {
+		command.profile.use(name, program.opts())
+	})
+
+profileCmd
+	.command("current")
+	.description(locale.commands.profileCurrent)
+	.action(() => {
+		command.profile.current(program.opts())
+	})
+
+profileCmd
+	.command("add <name>")
+	.description(locale.commands.profileAdd)
+	.action((name) => {
+		command.profile.add(name, program.opts())
+	})
+
+profileCmd
+	.command("import <name> <file>")
+	.description(locale.commands.profileImport)
+	.action((name, file) => {
+		command.profile.import(name, file, program.opts())
 	})
 
 program.addHelpCommand(true, locale.help.helpCommandDescription)

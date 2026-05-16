@@ -1,6 +1,8 @@
 # struggler-cli
 
-`struggler-cli` is a small deployment CLI for front-end build assets on Qiniu Cloud. It can generate versioned paths, upload build output, refresh CDN URLs, and now supports `dry-run`, concurrent uploads, ignore rules, manifest export, JSON output, and a one-shot `deploy` command.
+`struggler-cli` is a small deployment CLI for front-end build assets on Qiniu Cloud. It supports versioned paths, upload, CDN refresh, upload cache, profiles for multiple Qiniu accounts, `dry-run`, concurrency, ignore rules, manifest export, JSON output, and a one-shot `deploy` command.
+
+Works on **macOS, Linux, and Windows** (Node.js `path` / `fs` APIs are cross-platform).
 
 ## Install
 
@@ -14,25 +16,120 @@ For local command usage:
 pnpm link --global
 ```
 
-## Config Files
+## First-time setup (recommended: profiles)
 
-The CLI expects two files in the same directory:
+Use **profiles** to store Qiniu credentials under your user home: `~/.struggler-cli/` (Windows: `%USERPROFILE%\\.struggler-cli\\`). This folder is created automatically; it is **not** shipped with the npm package.
 
-- `qiniu.json`: Qiniu credentials and bucket metadata
-- `config.json`: generated deploy prefix metadata used by upload/refresh
+```text
+~/.struggler-cli/          # created on first profile add/import (Windows/macOS/Linux)
+  profiles/
+    prod.json              # Qiniu credentials for production
+    staging.json
+  current                  # one line: active profile name, e.g. prod
 
-Example `qiniu.json`:
-
-```json
-{
-  "path": "your-project",
-  "accessKey": "",
-  "secretKey": "",
-  "Bucket": "",
-  "zone": "Zone_z1",
-  "domain": "https://cdn.example.com/"
-}
+your-project/
+  command/
+    config.json            # deploy prefix (publicPath / base), from init
+    upload-cache.json      # upload cache (optional)
+  dist/                    # build output to upload (-d)
 ```
+
+### Step 1 — Create a profile
+
+From your project root:
+
+```bash
+struggler-cli profile add prod
+```
+
+This creates `~/.struggler-cli/profiles/prod.json` from the built-in template. Open it and fill in:
+
+| Field | Description |
+|-------|-------------|
+| `path` | CDN path prefix segment for this app |
+| `accessKey` | Qiniu access key |
+| `secretKey` | Qiniu secret key |
+| `Bucket` | Bucket name |
+| `zone` | e.g. `Zone_z0`, `Zone_z1`, `Zone_z2` |
+| `domain` | CDN domain, e.g. `https://cdn.example.com/` |
+
+### Step 2 — Activate the profile
+
+```bash
+struggler-cli profile use prod
+```
+
+Or pass the profile name per command: `-c prod`.
+
+### Step 3 — Generate deploy metadata
+
+```bash
+struggler-cli init -d ./dist
+```
+
+Writes `command/config.json` with a timestamped `publicPath` and `base` URL (always under `./command/`, same as older versions).
+
+### Step 4 — Upload
+
+```bash
+struggler-cli upload -d ./dist
+```
+
+### More environments
+
+```bash
+struggler-cli profile add staging
+# edit ~/.struggler-cli/profiles/staging.json
+
+struggler-cli profile import dev ./path/to/existing-qiniu.json
+
+struggler-cli profile list
+struggler-cli profile current
+struggler-cli profile use staging
+struggler-cli init
+struggler-cli upload -d ./dist
+```
+
+Because profiles are user-level, they are outside your project repo by default.
+
+## Legacy setup (single `command/qiniu.json`)
+
+Still supported for existing projects:
+
+```text
+command/
+  qiniu.json
+  config.json
+```
+
+```bash
+struggler-cli init -c ./command/qiniu.json -d ./dist
+struggler-cli upload -c ./command/qiniu.json -d ./dist
+```
+
+If no profile is active and you omit `-c`, the CLI defaults to `./command/qiniu.json`.
+
+## How `-c` resolves config
+
+| You pass | Resolved to |
+|----------|-------------|
+| *(omit)* | Active profile in `~/.struggler-cli/current`, else `./command/qiniu.json` |
+| `-c prod` | `~/.struggler-cli/profiles/prod.json` |
+| `-c ./command/qiniu.json` | That file path (legacy) |
+
+`config.json` and upload cache stay in `./command/` unless you pass `--config-dir`.
+
+## Profile commands
+
+```bash
+struggler-cli profile list
+struggler-cli profile use <name>
+struggler-cli profile current
+struggler-cli profile add <name>
+struggler-cli profile import <name> <file>
+```
+
+## Other config files
 
 Optional ignore file:
 
@@ -53,66 +150,48 @@ legacy/**
 Initialize versioned config:
 
 ```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist init
+struggler-cli init -d ./dist
 ```
 
-Preview upload work without changing files or calling Qiniu:
+Preview upload:
 
 ```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist --dry-run upload
+struggler-cli --dry-run upload -d ./dist
 ```
 
 Upload with concurrency:
 
 ```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist --concurrency 8 upload
+struggler-cli upload -d ./dist --concurrency 8
 ```
 
-Upload with ignore patterns and a manifest:
+Full deploy:
 
 ```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist --exclude ".DS_Store,*.map" --manifest ./artifacts/upload-manifest.json upload
-```
-
-Refresh CDN for generated URLs:
-
-```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist refresh
-```
-
-Run the full flow:
-
-```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist --concurrency 8 deploy
-```
-
-Skip parts of deploy:
-
-```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist --skip-refresh deploy
+struggler-cli deploy -d ./dist --concurrency 8
 ```
 
 Machine-readable output:
 
 ```bash
-node ./index.js --config ./command/qiniu.json --dir ./dist --json --dry-run deploy
+struggler-cli deploy -d ./dist --json --dry-run
 ```
 
-Version bump script:
+## Windows notes
 
-```bash
-pnpm add-version
-```
+- The folder name `.struggler-cli` is valid on Windows; Node resolves paths with `\` automatically.
+- User-level profile root on Windows is `%USERPROFILE%\\.struggler-cli\\`.
+- In **Cmd** or **PowerShell**, run the same commands as on Unix.
+- Avoid spaces in profile names; use `prod`, `staging`, `dev`.
+- When scripting, quote paths: `--config-dir "./command"`.
 
-## Makefile Shortcuts
+## Makefile shortcuts
 
 ```bash
 make init
 make upload
 make refresh
 make deploy
-make upload DIR=./test/dist3 CONFIG=./test/command/qiniu.json DRY_RUN=--dry-run
-make deploy MANIFEST=./artifacts/deploy.json JSON=--json SKIP_REFRESH=--skip-refresh
 ```
 
 ## Test
@@ -121,4 +200,4 @@ make deploy MANIFEST=./artifacts/deploy.json JSON=--json SKIP_REFRESH=--skip-ref
 pnpm test
 ```
 
-The automated tests cover config path resolution, init dry-run behavior, upload ignore handling, manifest generation, and deploy JSON summaries.
+Tests cover profile resolution, config paths, init, upload, and deploy.

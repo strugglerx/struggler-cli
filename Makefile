@@ -55,9 +55,14 @@ link:
 		$(PNPM) setup; \
 	fi
 	@$(PNPM) link --global
+	@hash -r
+	@which struggler-cli || true
+	@struggler-cli -v || true
 
 unlink:
-	@$(PNPM) unlink --global @struggler/cli
+	@$(PNPM) unlink --global @struggler/cli || true
+	@npm uninstall -g @struggler/cli || true
+	@hash -r
 
 init:
 	$(NODE) $(CLI_ENTRY) --config $(CONFIG) --dir $(DIR) $(DRY_RUN) $(JSON) init

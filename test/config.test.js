@@ -16,7 +16,7 @@ test('config helpers resolve qiniu and derived config paths together', () => {
     );
     assert.equal(
         getConfig(options),
-        `${process.cwd()}/test/command/config.json`
+        `${process.cwd()}/command/config.json`
     );
     assert.equal(
         getDir(options),
@@ -40,6 +40,17 @@ test('config-dir flag without path defaults to ./command', () => {
     const options = {
         config: './test/command/qiniu.json',
         configDir: true,
+    };
+
+    assert.equal(
+        getConfig(options),
+        `${process.cwd()}/command/config.json`
+    );
+});
+
+test('custom -c without config-dir keeps meta files in ./command', () => {
+    const options = {
+        config: './def/qiniu.json',
     };
 
     assert.equal(
