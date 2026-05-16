@@ -5,7 +5,8 @@
 	"main": "index.js",
 	"scripts": {
 		"add-version": "node ./command/addVersion.js",
-		"test": "node --test"
+		"test": "node --test",
+		"postinstall": "node ./scripts/postinstall.js"
 	},
 	"bin": {
 		"struggler-cli": "./index.js"
