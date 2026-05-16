@@ -36,6 +36,18 @@ test('config-dir overrides default meta directory', () => {
     );
 });
 
+test('config-dir flag without path defaults to ./command', () => {
+    const options = {
+        config: './test/command/qiniu.json',
+        configDir: true,
+    };
+
+    assert.equal(
+        getConfig(options),
+        `${process.cwd()}/command/config.json`
+    );
+});
+
 test('deploy helpers normalize concurrency and build remote keys', () => {
     assert.equal(normalizeConcurrency('0'), 5);
     assert.equal(normalizeConcurrency('3'), 3);
