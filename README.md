@@ -6,19 +6,26 @@ Works on **macOS, Linux, and Windows** (Node.js `path` / `fs` APIs are cross-pla
 
 ## Install
 
+**Most users** — global install from npm:
+
 ```bash
-pnpm install
+npm install -g @struggler/cli
 ```
 
-For local command usage:
+Use a semver without a leading `v` (for example `1.0.17`, not `v1.0.17`).
+
+After install, run `struggler-cli` once with no arguments: if shell completion is not set up yet, you will see a short tip pointing at `struggler-cli completion install`.
+
+**Contributors / local development** — clone the repo and:
 
 ```bash
-pnpm link --global
+pnpm install
+make link          # global link + runs completion install for your shell (see Makefile)
 ```
 
 ## First-time setup (recommended: profiles)
 
-Use **profiles** to store Qiniu credentials under your user home: `~/.struggler-cli/` (Windows: `%USERPROFILE%\\.struggler-cli\\`). This folder is created automatically; it is **not** shipped with the npm package.
+Use **profiles** to store Qiniu credentials under your user home: `~/.struggler-cli/` (Windows: `%USERPROFILE%\.struggler-cli\`). This folder is created automatically; it is **not** shipped with the npm package.
 
 ```text
 ~/.struggler-cli/          # created on first profile add/import (Windows/macOS/Linux)
@@ -180,25 +187,40 @@ struggler-cli deploy -d ./dist --json --dry-run
 ## Windows notes
 
 - The folder name `.struggler-cli` is valid on Windows; Node resolves paths with `\` automatically.
-- User-level profile root on Windows is `%USERPROFILE%\\.struggler-cli\\`.
+- User-level profile root on Windows is `%USERPROFILE%\.struggler-cli\`.
 - In **Cmd** or **PowerShell**, run the same commands as on Unix.
 - Avoid spaces in profile names; use `prod`, `staging`, `dev`.
 - When scripting, quote paths: `--config-dir "./command"`.
 
 ## Shell completion
 
-Enable tab completion for subcommands, flags, and profile names.
+Tab completion covers subcommands, global flags, and profile names (for example `profile use <TAB>`).
 
-### zsh (recommended)
+**Recommended** — auto-detect shell from `$SHELL` and install files + rc snippets (idempotent):
 
-One-liner install:
+```bash
+struggler-cli completion install
+# then reload your shell config (zsh: ~/.zshrc, bash: ~/.bash_profile — see below)
+source ~/.zshrc          # zsh
+# or
+source ~/.bash_profile   # bash (what `completion install` patches today)
+```
+
+What this does:
+
+- **zsh**: writes `~/.zsh/completions/_struggler-cli` and appends `fpath` + `compinit` to `~/.zshrc` if missing.
+- **bash**: writes `~/.bash_completion.d/struggler-cli` and appends a `source` line to `~/.bash_profile` if missing.
+
+If `$SHELL` is not zsh or bash, use **Manual zsh** or **Manual bash** below (see also `struggler-cli completion -h`).
+
+**From this repo only** — same zsh layout via Make:
 
 ```bash
 make completion-install
 source ~/.zshrc
 ```
 
-Or manually:
+**Manual zsh** (equivalent to the above):
 
 ```bash
 mkdir -p ~/.zsh/completions
@@ -209,22 +231,35 @@ echo 'autoload -Uz compinit && compinit' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### bash
+**Manual bash** — do **not** append the script to `~/.bash_profile`; save it as a file and source it (matches `completion install`):
 
 ```bash
-struggler-cli completion bash >> ~/.bash_profile
+mkdir -p ~/.bash_completion.d
+struggler-cli completion bash > ~/.bash_completion.d/struggler-cli
+grep -q 'bash_completion.d/struggler-cli' ~/.bash_profile 2>/dev/null || \
+  echo '[ -f ~/.bash_completion.d/struggler-cli ] && source ~/.bash_completion.d/struggler-cli' >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
-After installation, `struggler-cli <TAB>` completes subcommands, flags, and `profile use <TAB>` completes your profile names.
+On some Linux setups only `~/.bashrc` is loaded for interactive shells; if completion does not load, add the same `source` line there instead.
+
+**Note:** `npm` may hide `postinstall` script output during install; relying on the first-run tip or `completion install` is intentional.
 
 ## Makefile shortcuts
+
+These targets assume you are in the **cloned repository** (they call `./index.js` with repo defaults).
 
 ```bash
 make init
 make upload
 make refresh
 make deploy
+```
+
+Override paths when needed, for example:
+
+```bash
+make upload CONFIG=./test/command/qiniu.json DIR=./test/dist3 DRY_RUN=--dry-run
 ```
 
 ## Test
