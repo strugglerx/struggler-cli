@@ -24,6 +24,18 @@ test('config helpers resolve qiniu and derived config paths together', () => {
     );
 });
 
+test('config-dir overrides default meta directory', () => {
+    const options = {
+        config: './test/command/qiniu.json',
+        configDir: './test/meta',
+    };
+
+    assert.equal(
+        getConfig(options),
+        `${process.cwd()}/test/meta/config.json`
+    );
+});
+
 test('deploy helpers normalize concurrency and build remote keys', () => {
     assert.equal(normalizeConcurrency('0'), 5);
     assert.equal(normalizeConcurrency('3'), 3);
